@@ -24,7 +24,6 @@ class GoalReferee:
 
     def generateSingleGoals(self, images, amount=1):
         amount = min(amount, GoalReferee.MAX_SINGLE_GOALS - len(self.single_goals))
-        images = list(range(len(images)))
         goals = random.sample(images, amount)
         for g in goals: self.single_goals[g] = random.random()
 
@@ -36,10 +35,9 @@ class GoalReferee:
             orbit = 0
             while len(targets) < campaign_size:
                 orbit_targets = random.randint(1, min(2, campaign_size-len(targets)))
-                image_list = list(range(len(images)))
-                targets = targets + [(image, orbit) for image in random.sample(image_list, orbit_targets)]
+                targets = targets + [(i, orbit) for i in random.sample(images, orbit_targets)]
                 orbit += 1
-            campaign = CampaignGoal(targets, campaign_size)
+            campaign = CampaignGoal(targets, reward=len(targets))
             self.campaigns.append(campaign)
 
     def evaluateDump(self, orbit, image):
@@ -65,7 +63,9 @@ class GoalReferee:
 
     def checkCampaignFailure(self, orbit):
         for c in self.campaigns:
+            if not c.campaign_started:
+                continue
             for index, target in enumerate(c.targets):
-                if c.campaign_started and not c.targets_completed[index] and orbit > target[1] + c.campaign_start_orbit:
+                if not c.targets_completed[index] and orbit > target[1] + c.campaign_start_orbit:
                     c.campaign_failed = True
         self.campaigns = [c for c in self.campaigns if not c.campaign_failed and not c.campaign_completed]

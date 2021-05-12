@@ -66,9 +66,9 @@ class SatelliteSim:
             self.pos = self.pos - SatelliteSim.PERIOD
 
         if self.pos <= dt:
-            images = [ i for i in self.targets if i not in self.goalRef.single_goals ]
-            self.goalRef.generateSingleGoals(self.targets,random.randint(0,len(images)-1))
-            self.goalRef.generateCampaigns(self.targets, random.randint(0, 1))
+            images = [ i for i in range(len(self.targets)) if i not in self.goalRef.single_goals ]
+            self.goalRef.generateSingleGoals(images,random.randint(0,len(images)-1))
+            self.goalRef.generateCampaigns(list(range(len(self.targets))), random.randint(0, 1))
             self.goalRef.checkCampaignFailure(orbit)
 
         # count down action duration
