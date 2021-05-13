@@ -14,7 +14,7 @@ def generatePlan(domain: str, problem: str, plan: str):
     return True
 
 
-def writePDDLProblem(sim: SatelliteSim, file: str, orbits=5):
+def writePDDLProblem(sim: SatelliteSim, file: str, orbits=3, goals=5):
     with open(file, "w") as f:
         f.write("(define(problem satprob)\n")
         f.write("(:domain SimpleSatellite)\n")
@@ -22,8 +22,12 @@ def writePDDLProblem(sim: SatelliteSim, file: str, orbits=5):
         for index in range(SatelliteSim.MEMORY_SIZE):
             f.write(" mem" + str(index))
         f.write(" - memory\n")
-        for index, target in enumerate(sim.targets):
-            f.write(" img" + str(index))
+        count = 0
+        for target in sim.goalRef.single_goals:
+            f.write(" img" + str(target))
+            count = count + 1
+            if count >= goals:
+                break
         f.write(" - image\n")
         f.write(")\n")
         f.write("(:init\n")
@@ -34,11 +38,16 @@ def writePDDLProblem(sim: SatelliteSim, file: str, orbits=5):
             f.write("  (memory_free mem" + str(index) + ")\n")
         f.write("\n")
         for o in range(orbits):
-            for index, target in enumerate(sim.targets):
+            count = 0
+            for index in sim.goalRef.single_goals:
+                target = sim.targets[index]
                 start = target[0] + SatelliteSim.PERIOD * o
                 end = target[1] + SatelliteSim.PERIOD * o
                 f.write("  (at " + str(round(start, 3)) + " (image_available img" + str(index) + "))\n")
                 f.write("  (at " + str(round(end, 3)) + " (not (image_available img" + str(index) + ")))\n")
+                count = count + 1
+                if count >= goals:
+                    break
         f.write("\n")
         for o in range(orbits):
             for index, target in enumerate(sim.groundStations):
@@ -48,8 +57,12 @@ def writePDDLProblem(sim: SatelliteSim, file: str, orbits=5):
                 f.write("  (at " + str(round(end, 3)) + " (not (dump_available)))\n")
         f.write(")\n")
         f.write("(:goal (and\n")
+        count=0
         for target in sim.goalRef.single_goals:
             f.write("  (image_dumped img" + str(target) + ")\n")
+            count = count + 1
+            if count >= goals:
+                break
         f.write(")))\n")
         f.close()
 
