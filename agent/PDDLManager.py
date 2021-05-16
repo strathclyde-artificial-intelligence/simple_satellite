@@ -1,15 +1,18 @@
+from collections.abc import Set
 from simulation.Simulation import SatelliteSim
 import requests
 
-
-def generatePlan(domain: str, problem: str, plan: str):
+def generatePlan(domain: str, problem: str, plan: str, verbose=False):
     data = {'domain': open(domain, 'r').read(), 'problem': open(problem, 'r').read()}
     resp = requests.post('https://popf-cloud-solver.herokuapp.com/solve', verify=True, json=data).json()
     if not 'plan' in resp['result']:
-        print("WARN: Plan was not found!")
+        if verbose:
+            print("WARN: Plan was not found!")
+            print(resp)
         return False
     with open(plan, 'w') as f:
         f.write(''.join([act for act in resp['result']['plan']]))
+
     f.close()
     return True
 
@@ -23,20 +26,30 @@ def writePDDLProblem(sim: SatelliteSim, file: str, orbits=3, goals=5):
             f.write(" mem" + str(index))
         f.write(" - memory\n")
         count = 0
-        for target in sim.goalRef.single_goals:
+
+        # declare image objects in goals or memory
+        imgs = set()
+        imgs.update(list(sim.goalRef.single_goals.keys())[:goals])
+        imgs.update([i for i in sim.images if i>=0])
+        for target in imgs:
             f.write(" img" + str(target))
-            count = count + 1
-            if count >= goals:
-                break
         f.write(" - image\n")
         f.write(")\n")
+
         f.write("(:init\n")
         f.write("  (sat_free)\n")
         f.write("  (= (total_score) 0)\n")
         f.write("\n")
+
         for index in range(SatelliteSim.MEMORY_SIZE):
-            f.write("  (memory_free mem" + str(index) + ")\n")
+            if sim.images[index] >= 0:
+                f.write("  (memory_taken mem" + str(index) + " img" + str(sim.images[index]) + ")\n")
+                if sim.analysis[index]:
+                    f.write("  (image_analysed mem" + str(index) + " img" + str(sim.images[index]) + ")\n")
+            else:
+                f.write("  (memory_free mem" + str(index) + ")\n")
         f.write("\n")
+
         for o in range(orbits):
             count = 0
             for index in sim.goalRef.single_goals:
@@ -86,5 +99,4 @@ def readPDDLPlan(file: str):
 
 
 if __name__ == '__main__':
-    generatePlan("domain.pddl", "problem.pddl", "plan.pddl")
-    print("done")
+    generatePlan("pddl/domain.pddl", "pddl/problem.pddl", "pddl/plan.pddl", verbose=True)

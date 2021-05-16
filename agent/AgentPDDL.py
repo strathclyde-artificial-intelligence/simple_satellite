@@ -24,19 +24,24 @@ class PDDLAgent(AgentInterface):
         self.lock_step = False
 
     def generatePlan(self, sim: SatelliteSim):
-        print("({name}) generating a plan".format(name=self.name))
+        if self.verbose>0: print("({name}) generating a plan".format(name=self.name))
         PDDLManager.writePDDLProblem(sim, "pddl/problem.pddl", self.orbits_to_plan, self.goals_to_plan)
         if PDDLManager.generatePlan("pddl/domain.pddl", "pddl/problem.pddl", "pddl/plan.pddl"):
             if self.verbose>0: print("({name}) planning complete".format(name=self.name))
             self.plan = PDDLManager.readPDDLPlan("pddl/plan.pddl")
             if len(self.plan) > 0: self.current_action = self.plan.pop(0)
+            self.goals_to_plan = min(self.goals_to_plan + 1, 5)
         else:
             if self.verbose>0: print("({name}) planning failed".format(name=self.name))
+            self.goals_to_plan = max(self.goals_to_plan-1,0)
         self.plan_received = True
         self.plan_requested = False
         self.plan_start = -1
 
     def getAction(self, sim: SatelliteSim):
+
+        # satellite is busy
+        if sim.satellite_busy_time > 0: return
 
         # no more actions
         if not self.plan_received or not self.current_action:
@@ -58,9 +63,6 @@ class PDDLAgent(AgentInterface):
             orbit = math.ceil(sim.sim_time / SatelliteSim.PERIOD)
             self.plan_start = orbit * SatelliteSim.PERIOD
             if self.verbose>0: print("({name}) plan will start on orbit {o} at time {t}".format(name=self.name, o=orbit, t=self.plan_start))
-
-        # satellite is busy
-        if sim.satellite_busy_time > 0: return
 
         # check next action
         if sim.sim_time > self.plan_start + self.current_action[0]:

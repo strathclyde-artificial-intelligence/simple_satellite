@@ -1,5 +1,7 @@
 import math
 import random
+import sys
+
 from simulation.GoalReferee import GoalReferee
 
 class SatelliteSim:

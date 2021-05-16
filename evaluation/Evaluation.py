@@ -18,10 +18,10 @@ def create_sim():
     return sim
 
 def create_agent():
-    agent = GreedyAgent()
-    # agent = PDDLAgent()
-    # agent.lock_step = True
-    # agent.verbose = 0
+    #agent = GreedyAgent()
+    agent = PDDLAgent()
+    agent.lock_step = True
+    agent.verbose = 0
     return agent
 
 def run_sim(sim: SatelliteSim, agent: AgentInterface):
