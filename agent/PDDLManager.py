@@ -1,23 +1,20 @@
-from collections.abc import Set
 from simulation.Simulation import SatelliteSim
 import requests
 
-def generatePlan(domain: str, problem: str, plan: str, verbose=False):
+
+def generatePlan(domain: str, problem: str, plan: str):
     data = {'domain': open(domain, 'r').read(), 'problem': open(problem, 'r').read()}
     resp = requests.post('https://popf-cloud-solver.herokuapp.com/solve', verify=True, json=data).json()
     if not 'plan' in resp['result']:
-        if verbose:
-            print("WARN: Plan was not found!")
-            print(resp)
+        print("WARN: Plan was not found!")
         return False
     with open(plan, 'w') as f:
         f.write(''.join([act for act in resp['result']['plan']]))
-
     f.close()
     return True
 
 
-def writePDDLProblem(sim: SatelliteSim, file: str, orbits=3, goals=5):
+def writePDDLProblem(sim: SatelliteSim, file: str, orbits=5):
     with open(file, "w") as f:
         f.write("(define(problem satprob)\n")
         f.write("(:domain SimpleSatellite)\n")
@@ -25,57 +22,34 @@ def writePDDLProblem(sim: SatelliteSim, file: str, orbits=3, goals=5):
         for index in range(SatelliteSim.MEMORY_SIZE):
             f.write(" mem" + str(index))
         f.write(" - memory\n")
-        count = 0
-
-        # declare image objects in goals or memory
-        imgs = set()
-        imgs.update(list(sim.goalRef.single_goals.keys())[:goals])
-        imgs.update([i for i in sim.images if i>=0])
-        for target in imgs:
-            f.write(" img" + str(target))
+        for index, target in enumerate(sim.targets):
+            f.write(" img" + str(index))
         f.write(" - image\n")
         f.write(")\n")
-
         f.write("(:init\n")
         f.write("  (sat_free)\n")
         f.write("  (= (total_score) 0)\n")
         f.write("\n")
-
         for index in range(SatelliteSim.MEMORY_SIZE):
-            if sim.images[index] >= 0:
-                f.write("  (memory_taken mem" + str(index) + " img" + str(sim.images[index]) + ")\n")
-                if sim.analysis[index]:
-                    f.write("  (image_analysed mem" + str(index) + " img" + str(sim.images[index]) + ")\n")
-            else:
-                f.write("  (memory_free mem" + str(index) + ")\n")
+            f.write("  (memory_free mem" + str(index) + ")\n")
         f.write("\n")
-
         for o in range(orbits):
-            count = 0
-            for index in sim.goalRef.single_goals:
-                target = sim.targets[index]
-                start = target[0] + SatelliteSim.PERIOD * o
-                end = target[1] + SatelliteSim.PERIOD * o
+            for index, target in enumerate(sim.targets):
+                start = target[0] + sim.PERIOD * o
+                end = target[1] + sim.PERIOD * o
                 f.write("  (at " + str(round(start, 3)) + " (image_available img" + str(index) + "))\n")
                 f.write("  (at " + str(round(end, 3)) + " (not (image_available img" + str(index) + ")))\n")
-                count = count + 1
-                if count >= goals:
-                    break
         f.write("\n")
         for o in range(orbits):
             for index, target in enumerate(sim.groundStations):
-                start = target[0] + SatelliteSim.PERIOD * o
-                end = target[1] + SatelliteSim.PERIOD * o
+                start = target[0] + sim.PERIOD * o
+                end = target[1] + sim.PERIOD * o
                 f.write("  (at " + str(round(start, 3)) + " (dump_available))\n")
                 f.write("  (at " + str(round(end, 3)) + " (not (dump_available)))\n")
         f.write(")\n")
         f.write("(:goal (and\n")
-        count=0
         for target in sim.goalRef.single_goals:
             f.write("  (image_dumped img" + str(target) + ")\n")
-            count = count + 1
-            if count >= goals:
-                break
         f.write(")))\n")
         f.close()
 
@@ -99,4 +73,5 @@ def readPDDLPlan(file: str):
 
 
 if __name__ == '__main__':
-    generatePlan("pddl/domain.pddl", "pddl/problem.pddl", "pddl/plan.pddl", verbose=True)
+    generatePlan("domain.pddl", "problem.pddl", "plan.pddl")
+    print("done")

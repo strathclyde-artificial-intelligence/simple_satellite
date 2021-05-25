@@ -20,8 +20,8 @@ class SatelliteView:
     ORBIT_DISTANCE = PLANET_SIZE / 10
     HUD_WIDTH = (SatelliteSim.MEMORY_SIZE - 1) * IMAGE_SIZE * 1.2 + IMAGE_SIZE * 0.8
 
-    def __init__(self):
-
+    def __init__(self, sim: SatelliteSim):
+        self.sim = sim
         # font
         pygame.font.init()
         self.font = pygame.font.SysFont(None, int(SatelliteView.IMAGE_SIZE / 2))
@@ -59,30 +59,30 @@ class SatelliteView:
 
         # draw ground station arcs
         for gs in sim.groundStations:
-            self.drawArc(SatelliteView.PURPLE, 2*math.pi*gs[0]/SatelliteSim.PERIOD, 2*math.pi*gs[1]/SatelliteSim.PERIOD, int(SatelliteView.PLANET_SIZE / 16))
+            self.drawArc(SatelliteView.PURPLE, 2*math.pi*gs[0]/SatelliteSim.CIRCUNFERENCE, 2*math.pi*gs[1]/SatelliteSim.CIRCUNFERENCE, int(SatelliteView.PLANET_SIZE / 16))
 
         # draw target arcs
         for t in sim.targets:
-            self.drawArc(SatelliteView.ORANGE, 2*math.pi*t[0]/SatelliteSim.PERIOD, 2*math.pi*t[1]/SatelliteSim.PERIOD, int(SatelliteView.PLANET_SIZE / 32))
+            self.drawArc(SatelliteView.ORANGE, 2*math.pi*t[0]/SatelliteSim.CIRCUNFERENCE, 2*math.pi*t[1]/SatelliteSim.CIRCUNFERENCE, int(SatelliteView.PLANET_SIZE / 32))
 
         # draw satellite
         pygame.draw.ellipse(self.screen, SatelliteView.WHITE,
                             [(SatelliteView.WIDTH - SatelliteView.SAT_SIZE) / 2 + (
                                         SatelliteView.PLANET_SIZE / 2 + SatelliteView.ORBIT_DISTANCE) * math.sin(
-                                2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2),
+                                2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2),
                              (SatelliteView.HEIGHT - SatelliteView.SAT_SIZE) / 2 + (
                                          SatelliteView.PLANET_SIZE / 2 + SatelliteView.ORBIT_DISTANCE) * math.cos(
-                                 2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2),
+                                 2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2),
                              SatelliteView.SAT_SIZE, SatelliteView.SAT_SIZE], 0)
         pygame.draw.line(self.screen, SatelliteView.WHITE,
                          (SatelliteView.WIDTH / 2 + (
                                      SatelliteView.PLANET_SIZE / 2 + SatelliteView.ORBIT_DISTANCE) * math.sin(
-                             2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2),
+                             2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2),
                           SatelliteView.HEIGHT / 2 + (
                                       SatelliteView.PLANET_SIZE / 2 + SatelliteView.ORBIT_DISTANCE) * math.cos(
-                              2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2)),
-                         (SatelliteView.WIDTH / 2 + (SatelliteView.PLANET_SIZE / 2) * math.sin(2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2),
-                          SatelliteView.HEIGHT / 2 + (SatelliteView.PLANET_SIZE / 2) * math.cos(2*math.pi*sim.pos/SatelliteSim.PERIOD + math.pi / 2))
+                              2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2)),
+                         (SatelliteView.WIDTH / 2 + (SatelliteView.PLANET_SIZE / 2) * math.sin(2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2),
+                          SatelliteView.HEIGHT / 2 + (SatelliteView.PLANET_SIZE / 2) * math.cos(2*math.pi*sim.pos/SatelliteSim.CIRCUNFERENCE + math.pi / 2))
                          )
 
         # draw images
@@ -141,7 +141,7 @@ class SatelliteView:
                             SatelliteView.HEIGHT - SatelliteView.GOAL_SIZE * 5.0))
 
         # draw campaigns
-        orbit = math.floor(sim.sim_time / SatelliteSim.PERIOD)
+        orbit = math.floor(sim.sim_time / self.sim.PERIOD)
         if len(sim.goalRef.campaigns) >= 0:
             for index, c in enumerate(sim.goalRef.campaigns):
                 pygame.draw.rect(self.screen, SatelliteView.WHITE,

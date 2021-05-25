@@ -17,8 +17,8 @@ if __name__ == '__main__':
     sim = SatelliteSim()
     sim.initRandomStations(2)
     sim.initRandomTargets(10)
-    sim.goalRef.generateSingleGoals(list(range(len(sim.targets))), 5)
-    sim.goalRef.generateCampaigns(list(range(len(sim.targets))), sim.goalRef.MAX_CAMPAIGNS)
+    sim.goalRef.generateSingleGoals(sim.targets, 5)
+    sim.goalRef.generateCampaigns(sim.targets, sim.goalRef.MAX_CAMPAIGNS)
     view = SatelliteView()
 
     # create agent
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
         view.drawSim(sim)
         action = agent.getAction(sim)
-        finished = finished or sim.update(action, 0.3)
+        finished = finished or sim.update(action, 0.5)
         clock.tick(60)
 
     pygame.quit()

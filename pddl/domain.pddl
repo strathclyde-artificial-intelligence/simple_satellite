@@ -1,5 +1,3 @@
-;; Written on planning.domains
-;; Read-Only link: http://editor.planning.domains/#read_session=DUrGySABsW
 (define (domain SimpleSatellite)
 
     (:requirements
@@ -74,7 +72,6 @@
         :duration (= ?duration 20)
         :condition (and 
             (at start (sat_free))
-            (at start (memory_taken ?m ?i))
             (at start (image_analysed ?m ?i))
             (at start (dump_available))
             )
@@ -82,7 +79,6 @@
             (at start (not (sat_free)))
             (at start (sat_busy))
             (at start (not (memory_taken ?m ?i)))
-            (at start (not (image_analysed ?m ?i)))
             (at end (memory_free ?m))
             (at end (image_dumped ?i))
             (at end (not (sat_busy)))
