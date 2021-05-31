@@ -12,11 +12,15 @@ from gym import spaces
 import numpy as np
 class SimpleSat(gym.Env):
 
-    def __init__(self, sim: SatelliteSim, time_step: float, degug=False):
+    def __init__(self, sim: SatelliteSim, time_step: float, degug=False, debug=False):
         super(SimpleSat, self).__init__()
-        
+        """Custom Environment that follows gym interface"""
+        metadata = {'render.modes': ['human']}
+        # 
+        self.debug = debug
         # start render enviroment
         self.view = SatelliteView()
+
         # save the satelite enviroment
         self.SatSim = sim 
         self.t = 0
@@ -29,11 +33,18 @@ class SimpleSat(gym.Env):
         #  - 3: Do Nothing
         self.action_space = spaces.Discrete(4)
 
-        # Observation space is composed as:
-        # state = [time(continous), theta(continous), busy(binary), memory_picture(discrete), memory_analyze_pic(discrete), locations of targets, locations of ground station]
-        max_memory = self.SatSim.MEMORY_SIZE
-        self.observation_space = spaces.Box(low=np.array([0.0, 0.0, 0, 0, 0]), high=np.array([999999999, 360.0, 1, max_memory, max_memory]),
-                                            shape=(5,), dtype=np.float)
+        # Observation space is composed as  a dictionary
+        self.observation_space = spaces.Dict({
+                                        'Time': spaces.Box(low=0, high=1e10, shape=(1,)),
+                                        'Position': spaces.Box(low=0, high=400, shape=(1,)),
+                                        'Busy': spaces.Discrete(2),
+                                        'Memory':spaces.Discrete(SatelliteSim.MEMORY_SIZE),
+                                        'Images':spaces.Box(low=-1, high=SatelliteSim.MAX_TARGETS, shape=(SatelliteSim.MEMORY_SIZE,), dtype=np.int8),
+                                        'Analysis':spaces.MultiBinary(SatelliteSim.MEMORY_SIZE),
+                                        'Target Location': spaces.Box(low=-1, high=360, shape=(SatelliteSim.MAX_TARGETS, 2)),
+                                        'Station Location': spaces.Box(low=-1, high=360, shape=(SatelliteSim.MAX_STATION, 2))
+                                            })
+        self.SatSim.reset()
         self.state = self.SatSim.get_state()
         self.Total_reward = 0
 
@@ -45,22 +56,30 @@ class SimpleSat(gym.Env):
         self.state = next_state
         self.Total_reward += reward
         info = {}
-        observation = np.array(self.state)
-        if not(observation.shape == self.observation_space.shape):
-            print('Observation_space')
-            print(self.observation_space.shape)
-            print('Observation')
-            print(observation.shape)
+        observation = self.state
         return observation, reward, done, info
 
     def reset(self):
         self.SatSim.reset()
         self.state = self.SatSim.get_state()
         self.Total_reward = 0
-        observation = np.array(self.state)
+        observation = self.state
+        if self.debug:
+            print('Observation_space')
+            for k in self.observation_space:
+                print(k)
+                print(self.observation_space[k].shape)
+            print('\n-------\n')
+            print('Observation')
+            for i,k in observation.items():
+                print(i)
+                if i == 'Busy' or i =='Memory':
+                    k =np.array(k)
+                
+                print(k.shape)
         return observation 
 
-    def render(self):
+    def render(self, mode='human'):
         self.view.drawSim(self.SatSim)
 
     def close (self):

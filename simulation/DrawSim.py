@@ -20,8 +20,7 @@ class SatelliteView:
     ORBIT_DISTANCE = PLANET_SIZE / 10
     HUD_WIDTH = (SatelliteSim.MEMORY_SIZE - 1) * IMAGE_SIZE * 1.2 + IMAGE_SIZE * 0.8
 
-    def __init__(self, sim: SatelliteSim):
-        self.sim = sim
+    def __init__(self):
         # font
         pygame.font.init()
         self.font = pygame.font.SysFont(None, int(SatelliteView.IMAGE_SIZE / 2))
@@ -141,7 +140,7 @@ class SatelliteView:
                             SatelliteView.HEIGHT - SatelliteView.GOAL_SIZE * 5.0))
 
         # draw campaigns
-        orbit = math.floor(sim.sim_time / self.sim.PERIOD)
+        orbit = math.floor(sim.sim_time / sim.PERIOD)
         if len(sim.goalRef.campaigns) >= 0:
             for index, c in enumerate(sim.goalRef.campaigns):
                 pygame.draw.rect(self.screen, SatelliteView.WHITE,

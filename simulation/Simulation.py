@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import random
 from simulation.GoalReferee import GoalReferee
 
@@ -8,6 +9,11 @@ class SatelliteSim:
 
     CIRCUNFERENCE = 360
     ACTION_THRESHOLD = 6
+
+    MAX_TARGETS = 10
+    MAX_STATION = 4
+    MIN_TARGETS = 2
+    MIN_STATION = 1
 
     MEMORY_SIZE = 10
 
@@ -26,7 +32,7 @@ class SatelliteSim:
         self.velocity = SatelliteSim.CIRCUNFERENCE/self.PERIOD
 
         # satellite state
-        self.pos = 0
+        self.pos = 0.
         self.orbit = 0
         self.last_action = None
 
@@ -64,11 +70,12 @@ class SatelliteSim:
             done = True
 
         # update state
+        action=[action]
         if len(action)==1:
             self.apply_action(action)
             state = self.get_state()
             return state, done
-        elif len(action)==3:
+        elif len(action[0])==3:
             self.apply_action(action[0], image_target=action[1], memory_slot=action[2])
             return done
         else:
@@ -127,7 +134,7 @@ class SatelliteSim:
                     if not self.analysis[index+1] and self.analysis[index]:
                         picture_to_dump=index
                         break
-                if self.analysis[-1] == True:
+                if self.analysis[-1]:
                     picture_to_dump = index+1
                 # Look at the first and last picture false
                 if picture_to_dump:
@@ -154,26 +161,50 @@ class SatelliteSim:
         self.satellite_busy_time = 0
 
         # Generate Targets
-        self.initRandomTargets(int(round(random.normal(8,4))))
+        self.initRandomTargets(int(round(random.normalvariate(8,4))))
 
         # Generate Ground Stations
-        self.initRandomStations(int(round(random.normal(2,1))))
+        self.initRandomStations(int(round(random.normalvariate(2,1))))
 
     def initRandomStations(self, amount):
         self.groundStations = []
-        for i in range(amount):
-            s = random.random()*(SatelliteSim.CIRCUNFERENCE-15)
-            self.groundStations.append((s, s+15))
+
+        if amount>self.MAX_STATION:
+            amount = self.MAX_STATION
+        if amount<SatelliteSim.MIN_STATION:
+            amount = SatelliteSim.MIN_STATION 
+
+        for i in range(SatelliteSim.MAX_STATION):
+            if i < amount:
+                s = random.random()*(SatelliteSim.CIRCUNFERENCE-15)
+                self.groundStations.append((s, s+15))
+            else:
+                self.groundStations.append((-1, -1))
 
     def initRandomTargets(self, amount):
         self.targets = []
-        for i in range(amount):
-            s = random.random()*(SatelliteSim.CIRCUNFERENCE-5)
-            self.targets.append((s, s+5))
+
+        if amount>SatelliteSim.MAX_TARGETS:
+            amount = SatelliteSim.MAX_TARGETS
+        if amount<SatelliteSim.MIN_TARGETS:
+            amount = SatelliteSim.MIN_TARGETS 
+
+        for i in range(SatelliteSim.MAX_TARGETS):
+            if i < amount:
+                s = random.random()*(SatelliteSim.CIRCUNFERENCE-5)
+                self.targets.append((s, s+5))
+            else:
+                self.targets.append((-1, -1))
 
     def get_state(self):
-        state = [self.sim_time, self.pos, self.busy, self.memory_level, 
-                *self.images, *self.analysis, *self.targets, *self.groundStations]
+        state = {'Analysis':np.array([int(i) for i in self.analysis]),
+                'Busy': self.busy,
+                'Images':np.array(self.images, dtype=np.int8),
+                'Memory': self.memory_level,
+                'Position': np.array([self.pos]),
+                'Station Location': np.array(self.groundStations),
+                'Target Location': np.array(self.targets),
+                'Time': np.array([self.sim_time])}
         return state
         
     def time2angle(self, time):
