@@ -6,7 +6,7 @@ from simulation.Simulation import SatelliteSim
 from stable_baselines3 import PPO as agent
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecEnv
-from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, EventCallback 
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, EvalCallback 
 import IPython
 
 R_p = int(input('Reward per succesful action: '))
@@ -21,12 +21,12 @@ episode_length = SatelliteSim.MAX_ORBITS*env.SatSim.PERIOD
 #VecEnv(4, env.observation_space, env.action_space)
 check_env(env)
 env.close()
-
+eval_env = SimpleSat( R_p=R_p, Reward_version=Reward_version, Simulation_version=Simulation_version)
 # Call backs
 n_episode_save = 100
-checkpoint_callbac = CheckpointCallback(save_freq=episode_length*n_episode_save)
+checkpoint_callbac = CheckpointCallback(save_freq=episode_length*n_episode_save, save_path="RL/Agent/"+filename)
 eval_callback = EvalCallback(eval_env, best_model_save_path='./RL/Agent/logs/best_model',
-                             log_path='./RL/Agent/logs/results', eval_freq=episode_length*n_episode_sav)
+                             log_path='./RL/Agent/logs/results', eval_freq=episode_length*n_episode_save)
 callback_list = CallbackList([checkpoint_callbac, eval_callback])
 
 # Set agent and Wrappers
