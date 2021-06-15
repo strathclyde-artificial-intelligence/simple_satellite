@@ -63,4 +63,5 @@ class CustomCallback(BaseCallback):
         """
         This event is triggered before exiting the `learn()` method.
         """
+        print("Training End")
         pass

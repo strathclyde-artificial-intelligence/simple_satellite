@@ -2,6 +2,7 @@ import math
 import numpy as np
 import random
 from simulation.GoalReferee import GoalReferee
+import IPython 
 
 class SatelliteSim:
 
@@ -20,13 +21,14 @@ class SatelliteSim:
     ACTION_TAKE_IMAGE = 0
     ACTION_DUMP = 1
     ACTION_ANALYSE = 2
+    ACTION_DO_NOTHING = 3
 
     DURATION_TAKE_IMAGE = 2
     DURATION_DUMP = 19
     DURATION_ANALYSE = 49
 
-    def __init__(self, period=600):
-
+    def __init__(self, period, Version):
+        self.version = Version
         self.sim_time = 0
         self.PERIOD = period
         self.velocity = SatelliteSim.CIRCUNFERENCE/self.PERIOD
@@ -39,6 +41,8 @@ class SatelliteSim:
         # planet position
         self.groundStations = []
         self.targets = []
+        self.over_targets = [0] * self.MAX_TARGETS
+        self.over_Station = [0] * self.MAX_STATION 
 
         # memory state
         self.memory_level = 0
@@ -52,6 +56,11 @@ class SatelliteSim:
 
     def update(self, action, dt: float):
         done = False
+        act=[action]
+        if len(act)==1:
+            self.apply_action(action)
+        elif len(act[0])==3:
+            self.apply_action(action[0], image_target=action[1], memory_slot=action[2])
 
         # update time variables
         self.sim_time += dt
@@ -61,21 +70,28 @@ class SatelliteSim:
         if self.pos > SatelliteSim.CIRCUNFERENCE:
             self.pos -=  SatelliteSim.CIRCUNFERENCE
             self.orbit += 1
+            if self.orbit%100 == 0:
+                self.initRandomTargets(int(round(random.normalvariate(8,4))))
+
+        self.over_targets = [int(self.targets[i][0] < self.pos < self.targets[i][1]) for i in range(SatelliteSim.MAX_TARGETS)]
+        self.over_Station = [int(self.groundStations[i][0] < self.pos < self.groundStations[i][1]) for i in range(SatelliteSim.MAX_STATION)]
 
         if self.satellite_busy_time > 0:
             self.satellite_busy_time = self.satellite_busy_time - dt
+            self.busy=1
+        else: 
+            self.busy = 0
 
         # Check if simulation ends
         if self.orbit>=SatelliteSim.MAX_ORBITS:
+            print('Episode Ended number of orbits : {}'.format(self.orbit))
             done = True
-
+        
         # update state
-        action=[action]
-        if len(action)==1:
-            self.apply_action(action)
+        if len(act)==1:
             state = self.get_state()
             return state, done
-        elif len(action[0])==3:
+        elif len(act[0])==3:
             self.apply_action(action[0], image_target=action[1], memory_slot=action[2])
             return done
         else:
@@ -84,64 +100,74 @@ class SatelliteSim:
     def apply_action(self, action, image_target=None, memory_slot=None):   
 
         # check if busy or the satellite does nothing 
-        if self.satellite_busy_time > 0 or action==3 or action==None:
-            self.busy=1
+        if self.busy==1 or action==3 or action==None:
             return 
-        
+
         # Take picture action
         if action == SatelliteSim.ACTION_TAKE_IMAGE:
-            for index in len(self.targets):
+            for index in range(len(self.targets)):
                 if image_target:
                     ind_mem = memory_slot
                     index = image_target
-                else: 
-                    ind_mem = self.memory_level
-                if self.targets[index][0] < self.pos < self.targets[index][1] and self.memory_level<SatelliteSim.MEMORY_SIZE:
+                else:
+                    if self.version == 1: 
+                        ind_mem = self.memory_level
+                    elif self.version == 2:
+                        for ind_mem in range(SatelliteSim.MEMORY_SIZE):
+                            if self.images[ind_mem] == -1:
+                                break
+                    else:
+                        raise('Not valid value of version of simulation')
+                if self.targets[index][0] < self.pos < self.targets[index][1] and self.memory_level<SatelliteSim.MEMORY_SIZE-1:
                     self.satellite_busy_time = SatelliteSim.DURATION_TAKE_IMAGE
                     self.images[ind_mem] = index
                     self.memory_level += 1
-                    self.last_action = action
+                    self.last_action = [action, index, ind_mem]
+                    #print('Image succesful')
                     break
                 index += 1 
             return
         
         # Analyse picture
         if action == SatelliteSim.ACTION_ANALYSE:
-            self.satellite_busy_time = SatelliteSim.DURATION_ANALYSE
-            for index in len(self.analysis):
+            for index in range(len(self.analysis)):
                 if memory_slot:
                     index = memory_slot 
-                if not self.analysis:
+                if not self.analysis[index] and self.images[index]>-.5:
+                    self.satellite_busy_time = SatelliteSim.DURATION_ANALYSE
+                    #print('Analyzed')
+                    self.last_action = [action, self.images[index], index]
                     if random.random() > 0.0:
                         self.analysis[index] = True
                     else:
                         self.analysis[index] = False
                         self.images[index] = -1
                         self.memory_level -= 1
-                    self.last_action = action
                     break
-                index += 1
             return
         
         # Dump picture
         if action == SatelliteSim.ACTION_DUMP:
             # check if it is above the ground station and if their is any analysed image
-            picture_to_dump = None
-            if any([gs[0]-self.ACTION_THRESHOLD < self.pos < gs[1]+self.ACTION_THRESHOLD for gs in self.groundStations]) and self>0 :
-                self.satellite_busy_time = SatelliteSim.DURATION_DUMP
+            Dumping=False
+            if any([gs[0]< self.pos < gs[1] for gs in self.groundStations]) and self.memory_level>0 :
                 # Check all the images except the last one
-                for index in range(len(self.analysis)-1):
-                    if not self.analysis[index+1] and self.analysis[index]:
-                        picture_to_dump=index
-                        break
                 if self.analysis[-1]:
-                    picture_to_dump = index+1
+                    picture_to_dump = SatelliteSim.MEMORY_SIZE-1
+                else:
+                    for index in range(len(self.analysis)-1):
+                        if not self.analysis[index+1] and self.analysis[index]:
+                            picture_to_dump=index
+                            Dumping=True
+                            break
                 # Look at the first and last picture false
-                if picture_to_dump:
+                if Dumping:
+                    #print('Dumped')
+                    self.last_action = [action, self.images[picture_to_dump], picture_to_dump]
+                    self.satellite_busy_time = SatelliteSim.DURATION_DUMP
                     self.analysis[picture_to_dump] = False
                     self.images[picture_to_dump] = -1
                     self.memory_level -= 1
-                    self.last_action = action
                     # score the goal value
                     self.goalRef.evaluateDump(self.orbit, self.images[index])
                     return
@@ -153,6 +179,9 @@ class SatelliteSim:
         self.pos = 0
         self.orbit = 0
         self.last_action = None
+
+        self.over_targets = [0] * self.MAX_TARGETS
+        self.over_Station = [0] * self.MAX_STATION 
 
         # memory state
         self.memory_level = 0
@@ -201,6 +230,8 @@ class SatelliteSim:
                 'Busy': self.busy,
                 'Images':np.array(self.images, dtype=np.int8),
                 'Memory': self.memory_level,
+                'Over Target': np.array(self.over_targets),
+                'Over station': np.array(self.over_Station),
                 'Position': np.array([self.pos]),
                 'Station Location': np.array(self.groundStations),
                 'Target Location': np.array(self.targets),
